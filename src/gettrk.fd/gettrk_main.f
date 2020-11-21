@@ -137,7 +137,7 @@ c                       reporting of the grid point value of the
 c                       minimum SLP for reporting to the atcfunix file.
 c                       Finally, fixed a bug (reported by JTWC) whereby
 c                       radii were being reported for thresholds that
-c                       were in exceedance of the tracker-diagnosed
+c                       were in exceedance of the  tracker-diagnosed
 c                       Vmax (e.g., 34-kt radii for a storm with 
 c                       Vmax = 25 kts).
 c
@@ -211,6 +211,23 @@ c                       that spans across the GM going from 265E to 5E),
 c                       the code was written to assume the user had 
 c                       coded the grid specification incorrectly.  This
 c                       condition is now allowed.
+c
+c   20-10-02  Marchok   Made a substantial change for fixed regional 
+c                       grids (e.g., HAFS-A/B, T-SHiELD) in how the 
+c                       tracker decides to stop tracking when a storm
+c                       is near the grid boundary.  This was in response
+c                       to an issue with these models for the tracker 
+c                       continuing to track noise after a storm had left
+c                       the grid boundary, and the track would appear to
+c                       "crawl" along the boundary.  Added two new
+c                       checks for storms that are within 350 km of the
+c                       grid boundary or invalid / null data on a fixed
+c                       regional grid.  One check is for a closed MSLP
+c                       contour, one is to check for mean, cyclonic Vt
+c                       at 850 mb in *each* of 4 quadrants around a 
+c                       storm.  Two new subroutines were added: 
+c                       probe_for_boundary and check_quadrant_wind_circ.
+c
 c
 c Input files:
 c   unit   11    Unblocked GRIB1 file containing model data
@@ -435,7 +452,7 @@ c                variable contains the name of the netcdf file
 c     ncfile_id  if the input data type is netcdf, then this ncfile_id
 c                variable contains an integer id assigned to the netcdf
 c                file from the open_ncfile subroutine
-c     ncfile_has_hour0  character flag (y|n) that, if the tracker is 
+c     ncfile_has_hour0  character flag (y|n) that, if the  tracker is 
 c                running on NetCDF data, tells if the NetCDF file 
 c                actually contains hour0 data or not (some, like the 
 c                2016 version of FV3, do not).
@@ -490,14 +507,14 @@ c                tracked parameters (i.e., the "calcparm" elements):
 c
 c                 1: 850 mb relative vorticity
 c                 2: 700 mb relative vorticity
-c                 3: 850 mb wind circulation difference
+c                 3: 850 mb wind circulation
 c                 4: NOT USED
-c                 5: 700 mb wind circulation differenc
+c                 5: 700 mb wind circulation
 c                 6: NOT USED
 c                 7: 850 mb geopotential height
 c                 8: 700 mb geopotential height
 c                 9: MSLP
-c                10: 10-m wind circulation difference
+c                10: 10-m wind circulation
 c                11: 10-m relative vorticity
 c                12: 500-850 mb thickness (lower level)
 c                13: 200-500 mb thickness (upper level)
@@ -509,14 +526,14 @@ c                (max_#_storms, max_fcst_times, max_#_parms).
 c                For the third position (max_#_parms), here they are:
 c                 1: Relative vorticity at 850 mb
 c                 2: Relative vorticity at 700 mb
-c                 3: Wind circulation difference at 850 mb
+c                 3: Wind circulation at 850 mb
 c                 4: NOT CURRENTLY USED
-c                 5: Wind circulation difference at 700 mb
+c                 5: Wind circulation at 700 mb
 c                 6: NOT CURRENTLY USED
 c                 7: Geopotential height at 850 mb
 c                 8: Geopotential height at 700 mb
 c                 9: Mean Sea Level Pressure
-c                10: Wind circulation difference at 10 m
+c                10: Wind circulation at 10 m
 c                11: Relative vorticity at 10 m
 c                12: Lower-level thickness (500-850)
 c                13: Upper-level thickness (200-500)
@@ -581,6 +598,11 @@ c                the lat/lon found by the  barnes analysis.
 c     closed_mslp_ctr_flag  This flag keeps track of the value of the 
 c                closed contour flag returned from subroutine
 c                check_closed_contour.
+c     closed_mslp_ctr_flag2  This flag also keeps track of the value of
+c                the closed contour flag returned from subroutine
+c                check_closed_contour.  But it does it for a different
+c                use.  Yes, it's a little redundant, but this was the
+c                least disruptive alternative.
 c     vt850_flag This flag keeps track of the value of the flag for 
 c                the 850 mb Vt check.
 c-----
@@ -595,11 +617,13 @@ c
       implicit none
 c
       type (datecard) inp
-      type (trackstuff) trkrinfo
+      type (trackstuff) trkrinfo,gb_check_trkrinfo
       type (netcdfstuff) netcdfinfo
       type (cint_stuff) contour_info
 c
       character, allocatable :: closed_mslp_ctr_flag(:,:)*1
+      character, allocatable :: closed_mslp_ctr_flag2(:,:)*1
+      character, allocatable :: quad_wind_circ_flag(:,:)*1
       character, allocatable :: vt850_flag(:,:)*1
       character :: r34_check_okay*1,had_to_try_backup_850_vt_check*1
       character :: need_to_expand_r34(4)*1,ncfile_has_hour0*1
@@ -612,7 +636,7 @@ c
       integer   imax,jmax,ifh,ist,irf,jj,istmp,ifhtemp,itret,ivpa
       integer   isiret1,isiret2,isiret3,idum,m,iix,jjx,imode,numtcv
       integer   iha,isa,iua,iva,iza,maxstorm,ivort,ifix,jfix,issret
-      integer   imoa,imoca,iksa,isda,ileadtime,leadtime_check
+      integer   imoa,imoca,iksa,isda,ileadtime,leadtime_check,imota
       integer   ioaret,ioaxret,ifgcret,ifmret,igugret,isoiret,icccret
       integer   igrret,igmwret,iorret,ignret,iovret,icbret,igucret,ita
       integer   ifilret,ifret,iaret,isret,iotmret,iwa,iisa,sl_counter
@@ -626,13 +650,14 @@ c
       character cvort_maxmin*3,isastorm(3)*1,ccflag*1,gotten_avg_value*1
       character cmaxmin*3,get_last_isobar_flag*1,wcore_flag*1
       character gfilename*120,ifilename*120,gridmove_status*7
+      character close_to_boundary*1,quad_wind_circ_check*4
       integer   vradius(3,4),igridzeta(nlevgrzeta),imeanzeta(nlevgrzeta)
       integer   maxmini(maxstorm),maxminj(maxstorm),pdf_ct_bin(16)
       integer   ifcsthour,stormct,prevstormct,kf,istmspd,istmdir,iggret
       integer   igiret,iuret,jdum,icount,ilonfix,jlatfix,igpret,ifhmax
       integer   ibeg,jbeg,iend,jend,ix1,ix2,n,ilev,npts,icpsa,igzvret
       integer   igfwret,ioiret,igisret,iofwret,iowsret,igwsret,igscret
-      integer   pdf_ct_tot,lugb,lugi,iret,icmcf,iccfh,ivt8f
+      integer   pdf_ct_tot,lugb,lugi,iret,icmcf,iccfh,ivt8f,icqwret
       integer   waitfor_gfile_status,waitfor_ifile_status,ncfile_tmax
       integer   wait_max_ifile_wait,ivr,r34_good_ct,itha,ilma,inctcv
       integer   date_time(8)
@@ -640,6 +665,7 @@ c
       real      fixlon(maxstorm,maxtime),fixlat(maxstorm,maxtime)
       real      gridprs(maxstorm,maxtime)
       real      wfract_cov(5,5,3)
+      real      vt_quad(numquad)
       real      er_wind(numquad,numdist)
       real      sr_wind(numquad,numdist)
       real      er_vr(numquad,numdist)
@@ -660,8 +686,8 @@ c
       real      prev_latmax,prev_latmin,prev_lonmax,prev_lonmin
       real      vradius_km,hold_old_contint,tcv_max_wind_ms
       real      tcv_mslp_pa,r34_from_tcv,roci_from_tcv
-      real      proci_from_tcv,prs_contint_thresh
-      integer   enable_timing,igrct
+      real      proci_from_tcv,prs_contint_thresh,xprstemp
+      integer   enable_timing,igrct,ipfbret,icmc2f,iqwcf
       character(pfc_cmd_len) :: pfc_final
 c
       prev_latmax = -999.0
@@ -671,28 +697,33 @@ c
       enable_timing=trkrinfo%enable_timing
       icmcf = 0
       ivt8f = 0
-      if (trkrinfo%type == 'midlat' .or. trkrinfo%type == 'tcgen') then
+c      if (trkrinfo%type == 'midlat' .or. trkrinfo%type == 'tcgen') then
         allocate (closed_mslp_ctr_flag(maxstorm,ifhmax),stat=icmcf)
+        allocate (closed_mslp_ctr_flag2(maxstorm,ifhmax),stat=icmc2f)
+        allocate (quad_wind_circ_flag(maxstorm,ifhmax),stat=iqwcf)
         allocate (vt850_flag(maxstorm,ifhmax),stat=ivt8f)
         ! Initialize flags to 'u', not 'n'.  That way, 
         ! when we are evaluating its value back over recent past hours,
         ! we can distinguish a "no" value from an initialized value of
         ! 'u' for which a storm hadn't yet been detected.
         closed_mslp_ctr_flag = 'u'
+        closed_mslp_ctr_flag2 = 'u'
+        quad_wind_circ_flag = 'u'
         vt850_flag = 'u'
-      endif
+c      endif
    
       allocate (prsindex(maxstorm),stat=iisa)
       allocate (prstemp(maxstorm),stat=iva)
       allocate (iwork(maxstorm),stat=iwa)
       if (iisa /= 0 .or. iva /= 0 .or. iwa /= 0 .or. icmcf /= 0 .or.
-     &     ivt8f /= 0) then
+     &     ivt8f /= 0 .or. icmc2f /= 0 .or. iqwcf /= 0) then
         if ( verb .ge. 1 ) then
           print *,' '
           print *,'!!! ERROR in sub tracker allocating prsindex,'
           print *,'!!! prstemp or iwork array for storms: iisa = ',iisa
           print *,'!!! iva= ',iva,' iwa= ',iwa,' icmcf= ',icmcf
-          print *,'!!! ivt8f= ',ivt8f
+          print *,'!!! ivt8f= ',ivt8f,' icmc2f= ',icmc2f
+          print *,'!!! iqwcf= ',iqwcf
         endif
         itret = 94
         return    
@@ -912,7 +943,7 @@ c          lugi = 5200
         !--------------------------------------------------------------
         ! Make call to getgridinfo in order to get info on the imax,
         ! jmax, as well as the x- and y-increments, and also to see if
-        ! the grid is correctly oriented for the tracker so that the 
+        ! the grid is correctly oriented for the  tracker so that the 
         ! data go north to south and west to east or if we need to flip
         ! either the lats or the lons.
         !--------------------------------------------------------------
@@ -1153,14 +1184,14 @@ c       If not enough tracked parms were read in, exit the program....
 
 c          1: 850 mb relative vorticity
 c          2: 700 mb relative vorticity
-c          3: 850 mb wind circulation difference
+c          3: 850 mb wind circulation
 c          4: NOT USED
-c          5: 700 mb wind circulation differenc
+c          5: 700 mb wind circulation
 c          6: NOT USED
 c          7: 850 mb geopotential height
 c          8: 700 mb geopotential height
 c          9: MSLP
-c         10: 10-m wind circulation difference
+c         10: 10-m wind circulation
 c         11: 10-m relative vorticity
 c         12: 500-850 mb thickness (lower level)
 c         13: 200-500 mb thickness (upper level)
@@ -1406,14 +1437,14 @@ c       the *tracked* parameters (i.e., the "calcparm" elements):
 c  
 c          1: 850 mb relative vorticity
 c          2: 700 mb relative vorticity
-c          3: 850 mb wind circulation difference
+c          3: 850 mb wind circulation
 c          4: NOT USED
-c          5: 700 mb wind circulation differenc
+c          5: 700 mb wind circulation
 c          6: NOT USED
 c          7: 850 mb geopotential height
 c          8: 700 mb geopotential height
 c          9: MSLP
-c         10: 10-m wind circulation difference
+c         10: 10-m wind circulation
 c         11: 10-m relative vorticity
 c         12: 500-850 mb thickness (lower level)
 c         13: 200-500 mb thickness (upper level)
@@ -2086,7 +2117,7 @@ c             flag will have a value of 'U', for "undetermined".
 
                   ! Do a check of the mslp gradient....
 
-                  print *,' ttest, in IF part: ' 
+                  print *,' Before call to is_it_a_storm for MSLP'
                   print *,'     clon(ist,ifh,9)= ',clon(ist,ifh,9)
                   print *,'     clat(ist,ifh,9)= ',clat(ist,ifh,9)
                   print *,'     xval(9)= ',xval(9)
@@ -2181,23 +2212,28 @@ c             flag will have a value of 'U', for "undetermined".
                 ! mean fix position.  There is a check on the value
                 ! of xinp_fixlat and xinp_fixlon to make sure that 
                 ! they contain valid values and not just the 
-                ! initialized -999 values.
+                ! initialized -99 or -999 values.
+
+                xinp_fixlat = -99.0
+                xinp_fixlat = -990.0
 
                 if (isiret1 == 0 .and. isastorm(1) == 'Y') then
-                  xinp_fixlat = clat(ist,ifh,9)
-                  xinp_fixlon = clon(ist,ifh,9)
-                  if (verb >= 3) then
-                    print *,' ttest at location C IF....'
-                    print *,'     xinp_fixlat= ',xinp_fixlat
-                    print *,'     xinp_fixlon= ',xinp_fixlon
-                  endif
-                else
-                  xinp_fixlat = fixlat(ist,ifh)
-                  xinp_fixlon = fixlon(ist,ifh)
-                  if (verb >= 3) then
-                    print *,' ttest at location C ELSE....'
-                    print *,'     xinp_fixlat= ',xinp_fixlat
-                    print *,'     xinp_fixlon= ',xinp_fixlon
+                  if (calcparm(9,ist)) then
+                    xinp_fixlat = clat(ist,ifh,9)
+                    xinp_fixlon = clon(ist,ifh,9)
+                    if (verb >= 3) then
+                      print *,' ttest at location C IF....'
+                      print *,'     xinp_fixlat= ',xinp_fixlat
+                      print *,'     xinp_fixlon= ',xinp_fixlon
+                    endif
+                  else
+                    xinp_fixlat = fixlat(ist,ifh)
+                    xinp_fixlon = fixlon(ist,ifh)
+                    if (verb >= 3) then
+                      print *,' ttest at location C ELSE....'
+                      print *,'     xinp_fixlat= ',xinp_fixlat
+                      print *,'     xinp_fixlon= ',xinp_fixlon
+                    endif
                   endif
                 endif
 
@@ -2227,16 +2263,51 @@ c             flag will have a value of 'U', for "undetermined".
 
                 print *,' ttest at location F'
 
-                ! For a "tracker" case, check to see if the user has
-                ! requested to compute and write out the ROCI.  If 
-                ! so, then we make a call to check_closed_contour,
-                ! being sure to specify 999 as the number of levels
-                ! to check....
+                ! In this next IF block, we have the potential to call
+                ! subroutine  check_closed_contour for two different 
+                ! cases of a type='tracker' run.  First, if the input
+                ! data are on a fixed regional grid, we check for a 
+                ! closed contour for cases in which the storm is close
+                ! to the grid boundary (this is to prevent the  tracker
+                ! tracking along the boundary for a storm that has 
+                ! left the grid).  Second, if the user has requested
+                ! to compute and write out the ROCI, then we make a
+                ! call to check_closed_contour, being sure to specify
+                ! 999 as the number of levels to check....
 
                 if (isiret1 == 0 .and. isastorm(1) == 'Y' .and.
      &              trkrinfo%type == 'tracker') then
 
-                  if (trkrinfo%want_oci) then
+                  ! If the tests for MSLP gradient have come back okay,
+                  ! then use the  tracker-derived MSLP center for the  
+                  ! closed-contour and ROCI checking.  Otherwise, use
+                  ! the mean fix position for this hour, but only if 
+                  ! MSLP has been read in.
+                   
+                  close_to_boundary = 'n'
+
+                  if (trkrinfo%gridtype == 'regional' .and.
+     &                inp%nesttyp == 'fixed') then
+                    if ( verb .ge. 3 ) then
+                      print *,' '
+                      print *,'Before call to probe_for_boundary,'
+                      print *,'ifix= ',ifix,' jfix= ',jfix
+                      print *,'longitude= ',xinp_fixlon,'E   ('
+     &                     ,360-xinp_fixlon,'W)'
+                      print *,'latitude= ',xinp_fixlat
+                      print *,'mean mslp value (xval(9))= ',xval(9)
+                    endif
+                    call probe_for_boundary (imax,jmax,dx,dy,ist
+     &                   ,'slp',slp,valid_pt,xinp_fixlon
+     &                   ,xinp_fixlat,trkrinfo,close_to_boundary
+     &                   ,ipfbret)
+                    if ( verb .ge. 3 ) then
+                      print *,'close_to_boundary= ',close_to_boundary
+                    endif
+                  endif
+
+                  if (trkrinfo%want_oci .or. 
+     &                close_to_boundary == 'y') then
 
                     if ( verb .ge. 3 ) then
                       print *,' '
@@ -2272,48 +2343,175 @@ c             flag will have a value of 'U', for "undetermined".
                         stop 95
                       endif
                     endif
- 
-                    if (trkrinfo%contint < prs_contint_thresh) then
-                      hold_old_contint = trkrinfo%contint
-                      trkrinfo%contint = prs_contint_thresh
+
+                    ! In the event that we have the case where both the
+                    ! user requests the ROCI and it's a fixed regional
+                    ! grid where the storm is close to a boundary and we
+                    ! need to check for a closed contour, then we have 
+                    ! to call check_closed_contour two separate times,
+                    ! because the contour intervals used may be 
+                    ! different, depending on what the user specified in
+                    ! the input namelist.
+
+                    if (trkrinfo%want_oci) then
+
+                      if (trkrinfo%contint < prs_contint_thresh) then
+                        hold_old_contint = trkrinfo%contint
+                        trkrinfo%contint = prs_contint_thresh
+                        if ( verb .ge. 3 ) then
+                          print *,' '
+                          print *,'Before calling routine to diagnose'
+                          print *,'the ROCI for a tracker run, the '
+                          print *,'requested contour interval is being'
+                          print *,'adjusted up (coarser) to avoid'
+                          print *,'having the contour check routine'
+                          print *,'break and return an invalid value.'
+                          print *,'User-requested contint value (Pa) = '
+     &                           ,hold_old_contint
+                          print *,'Modified contint value (Pa) = '
+     &                           ,trkrinfo%contint
+                        endif
+                      endif
+
+                      masked_outc = .false.
+                      get_last_isobar_flag = 'y'
+                      call check_closed_contour (imax,jmax,ifix,jfix,slp
+     &                    ,valid_pt,masked_outc,ccflag,'min',trkrinfo
+     &                    ,999,contour_info,get_last_isobar_flag
+     &                    ,plastbar,rlastbar,icccret)
+
                       if ( verb .ge. 3 ) then
                         print *,' '
-                        print *,'Before going into routine to diagnose'
-                        print *,'the ROCI for a tracker run, the '
-                        print *,'requested contour interval is being '
-                        print *,'adjusted up (coarser) to avoid having'
-                        print *,'the contour check routine break and '
-                        print *,'return an invalid value.'
-                        print *,'User-requested contint value (Pa) = '
-     &                         ,hold_old_contint
-                        print *,'Modified contint value (Pa) = '
+                        print *,'After call to check_closed_contour '
+                        print *,'to determine ROCI.'
+                        print *,'Contour interval threshold used= '
      &                         ,trkrinfo%contint
+                        print *,'ifix= ',ifix,' jfix= ',jfix
+                        print *,'longitude= ',xinp_fixlon,'E   ('
+     &                       ,360-xinp_fixlon,'W)'
+                        print *,'latitude= ',xinp_fixlat
+                        print *,'mean mslp value (xval(9))= ',xval(9)
+                        print *,'gridpoint mslp value= ',slp(ifix,jfix)
+                        print *,'ccflag= ',ccflag
+                        print *,'prs of last closed isobar = ',plastbar
+                        print *,'radius of last closed isobar = '
+     &                       ,rlastbar,' nm'
+                        print *,' '
                       endif
+
+                      if ( verb .ge. 3 ) then
+                        print *,' '
+                        print *,'!!! Storm ID = '
+     &                         ,storm(ist)%tcv_storm_id
+                        print *,'!!! Storm    = '
+     &                         ,storm(ist)%tcv_storm_name
+                        write (6,432) ifhours(ifh)
+     &                               ,ifclockmins(ifh)
+                        write (6,221) xinp_fixlat
+                        write (6,223) 360.-xinp_fixlon,xinp_fixlon
+                      endif
+
                     endif
 
-                    masked_outc = .false.
-                    get_last_isobar_flag = 'y'
-                    call check_closed_contour (imax,jmax,ifix,jfix,slp
-     &                  ,valid_pt,masked_outc,ccflag,'min',trkrinfo
-     &                  ,999,contour_info,get_last_isobar_flag,plastbar
-     &                  ,rlastbar,icccret)
+                    if (close_to_boundary == 'y') then
 
-                    if ( verb .ge. 3 ) then
-                      print *,' '
-                      print *,'After call to check_closed_contour, '
-                      print *,'ifix= ',ifix,' jfix= ',jfix
-                      print *,'longitude= ',xinp_fixlon,'E   ('
-     &                     ,360-xinp_fixlon,'W)'
-                      print *,'latitude= ',xinp_fixlat
-                      print *,'mean mslp value (xval(9))= ',xval(9)
-                      print *,'gridpoint mslp value= ',slp(ifix,jfix)
-                      print *,'ccflag= ',ccflag
-                      print *,'prs of last closed isobar = ',plastbar
-                      print *,'radius of last closed isobar = '
-     &                     ,rlastbar,' nm'
-                      print *,' '
+                      gb_check_trkrinfo = trkrinfo ! set equal to values
+                                                   ! from trkrinfo...
+                      gb_check_trkrinfo%contint = 
+     &                                  contint_grid_bound_check  
+                                   ! ...except use the grid bound check
+                                   ! contour inteval specified by 
+                                   ! the user in the extrkr.sh script.
+
+                      masked_outc = .false.
+                      get_last_isobar_flag = 'n' 
+                      call check_closed_contour (imax,jmax,ifix,jfix,slp
+     &                    ,valid_pt,masked_outc,ccflag,'min'
+     &                    ,gb_check_trkrinfo
+     &                    ,999,contour_info,get_last_isobar_flag
+     &                    ,plastbar,rlastbar,icccret)
+
+                      if ( verb .ge. 3 ) then
+                        print *,' '
+                        print *,'After call to check_closed_contour '
+                        print *,'for the fixed grid boundary check.'
+                        print *,'Contour interval threshold used= '
+     &                         ,gb_check_trkrinfo%contint
+                        print *,'ifix= ',ifix,' jfix= ',jfix
+                        print *,'longitude= ',xinp_fixlon,'E   ('
+     &                       ,360-xinp_fixlon,'W)'
+                        print *,'latitude= ',xinp_fixlat
+                        print *,'mean mslp value (xval(9))= ',xval(9)
+                        print *,'gridpoint mslp value= ',slp(ifix,jfix)
+                        print *,'ccflag= ',ccflag
+                        print *,' '
+                      endif
+
+                      if (ccflag == 'y') then
+                        closed_mslp_ctr_flag2(ist,ifh) = 'y' 
+                        if (close_to_boundary == 'y' .and.
+     &                      abs(xinp_fixlat) > 25.0) then
+                          if ( verb .ge. 3 ) then
+                            print *,'+++ Fixed grid boundary: MSLP GOOD'
+     &                             ,'  ifh= ',ifh,'  tau= ',ifhours(ifh)
+                          endif
+                        endif
+                      else  
+                        if (close_to_boundary == 'y' .and.
+     &                      abs(xinp_fixlat) > 25.0) then
+                          ! Put this next line (setting flag to n) within
+                          ! the IF statement, since we only want this to 
+                          ! be set for a case where the latitude is 
+                          ! poleward of 25N/25S.  For the 'y' part of the
+                          ! IF statement above, it doesn't matter, since
+                          ! it's a 'y'.
+                          closed_mslp_ctr_flag2(ist,ifh) = 'n'
+                          if ( verb .ge. 3 ) then
+                            print *,'!!! closed_mslp_ctr_flag2 FAIL'
+                            print *,'!!! Fixed grid boundary alert: '
+     &                             ,'MSLP  ifh= ',ifh,'  tau= '
+     &                             ,ifhours(ifh)
+                          endif
+                        endif
+                      endif
+
+                      if (close_to_boundary == 'y' .and. ifh > 1 .and.
+     &                    abs(xinp_fixlat) > 25.0) then
+                        ! The only way that close_to_boundary is set to
+                        ! y is if, above, the grid was detected as being
+                        ! a fixed regional grid *AND* the call to
+                        ! probe_for_boundary came back as 'y'.
+                        if (closed_mslp_ctr_flag2(ist,ifh) == 'n' .and.
+     &                      closed_mslp_ctr_flag2(ist,ifh-1) == 'n')
+     &                  then
+                          if ( verb .ge. 3 ) then
+                            print *,' '
+                            print *,'!!! Storm ID = '
+     &                             ,storm(ist)%tcv_storm_id
+                            print *,'!!! Storm    = '
+     &                             ,storm(ist)%tcv_storm_name
+                            write (6,432) ifhours(ifh),ifclockmins(ifh)
+                            print *,'!!! Fixed grid boundary STOPPAGE'
+                            print *,'!!!         for MSLP            '
+                            print *,'!!! This storm is close to the'
+                            print *,'!!! edge of a fixed regional grid,'
+                            print *,'!!! and the closed contour'
+                            print *,'!!! checking has failed for two'
+                            print *,'!!! consecutive lead times.'
+                            print *,'!!!      ifh   = ',ifh
+                            print *,'!!! and  ifh-1 = ',ifh-1
+                            print *,'!!! TRACKING WILL STOP FOR'
+                            print *,'!!! THIS STORM'
+                            fixlon (ist,ifh) = -999.0
+                            fixlat (ist,ifh) = -999.0
+                            stormswitch(ist) = 2
+                            cycle stormloop
+                          endif
+                        endif
+                      endif
+
                     endif
-
+  
                   endif
 
                 endif
@@ -2517,7 +2715,6 @@ c     &                ,rlastbar,icccret)
                       print *,' '
                     endif
  
-
                     call is_it_a_storm (imax,jmax,dx,dy,'v850',ist
      &                   ,valid_pt,clon(ist,ifh,3),clat(ist,ifh,3)
      &                   ,xval(3),trkrinfo,isastorm(3),isiret3)
@@ -2528,8 +2725,8 @@ c     &                ,rlastbar,icccret)
                     ! a while.  If a fix can't be made for 850 mb wind 
                     ! circulation (maybe the 850 mb wind circulation fix
                     ! was too far away from the guess?), then this check
-                    ! isn't performed.  We are changing this so that the
-                    ! 850 mb Vt wind speed check will still be
+                    ! wasn't performed.  We are changing this so that
+                    ! the 850 mb Vt wind speed check will still be
                     ! performed, but using the mean fixlat and fixlon 
                     ! positions as the center.  Still, we first need to
                     ! check to see if 850 mb u-comp and v-comp were even
@@ -2653,6 +2850,122 @@ c     &                ,rlastbar,icccret)
                     endif
 
                   endif   
+
+                  ! --------------------------------------------
+                  !
+                  ! --------------------------------------------
+
+                  print *,'At pt isi, isiret3= ',isiret3
+                  print *,'At pt isi, isastorm(3)= ',isastorm(3)
+                  print *,'At pt isi, type= ',trkrinfo%type == 'tracker'
+
+                  if (isiret3 == 0 .and. isastorm(3) == 'Y' .and.
+     &              trkrinfo%type == 'tracker') then
+
+                    ! If the fix center for 850 mb wind circulation was
+                    ! okay and able to be used, then use the  tracker-
+                    ! -derived 850 mb wind circulation center
+                    ! for the close-to-boundary closed circulation
+                    ! check.  Otherwise, use the mean fix position for
+                    ! this hour, but only if u850 and v850 have been
+                    ! read in.
+
+                    if (calcparm(3,ist)) then
+                      xinp_fixlat = clat(ist,ifh,3)
+                      xinp_fixlon = clon(ist,ifh,3)
+                    else
+                      xinp_fixlat = fixlat(ist,ifh)
+                      xinp_fixlon = fixlon(ist,ifh)
+                    endif
+
+                    close_to_boundary = 'n'
+
+                    if (trkrinfo%gridtype == 'regional' .and.
+     &                  inp%nesttyp == 'fixed') then
+                      call probe_for_boundary (imax,jmax,dx,dy,ist
+     &                     ,'v850',v(1,1,1),valid_pt,xinp_fixlon
+     &                     ,xinp_fixlat,trkrinfo,close_to_boundary
+     &                     ,ipfbret)
+
+                      print *,'At pt isi B, close_to_boundary = '
+     &                       ,close_to_boundary
+
+                      if (close_to_boundary == 'y' .and.
+     &                    (calcparm(3,ist) .or. 
+     &                     (readflag(3) .and. readflag(4)))) then
+                        call check_quadrant_wind_circ (imax,jmax,dx,dy
+     &                     ,ist,ifh,xinp_fixlon,xinp_fixlat,valid_pt
+     &                     ,vt_quad,trkrinfo,quad_wind_circ_check
+     &                     ,icqwret)
+
+                        if ( verb .ge. 3 ) then
+                          print *,' '
+                          print *,'!!! Storm ID = '
+     &                           ,storm(ist)%tcv_storm_id
+                          print *,'!!! Storm    = '
+     &                           ,storm(ist)%tcv_storm_name
+                          write (6,432) ifhours(ifh)
+     &                                 ,ifclockmins(ifh)
+                          write (6,221) xinp_fixlat
+                          write (6,223) 360.-xinp_fixlon,xinp_fixlon
+  221                     format (' !!! Boundary check xinp_fixlat is'
+     &                           ,' ',f7.2)
+  223                     format (' !!! Boundary check xinp_fixlon is'
+     &                           ,' ',f7.2,'W   (',f7.2,'E)')
+                        endif
+
+                        if (quad_wind_circ_check == 'pass') then
+                          quad_wind_circ_flag(ist,ifh) = 'y'
+                          if ( verb .ge. 3 ) then
+                            print *,'+++ Fixed grid boundary: v850 GOOD'
+     &                             ,'  ifh= ',ifh,'  tau= ',ifhours(ifh)
+                          endif
+                          continue
+                        else
+                          quad_wind_circ_flag(ist,ifh) = 'n'
+                          if ( verb .ge. 3 ) then
+                            print *,'!!! quad_wind_circ_flag FAIL'
+                            print *,'!! Fixed grid boundary alert: v850'
+     &                             ,'  ifh= ',ifh,'  tau= ',ifhours(ifh)
+                          endif
+                          if (ifh > 1) then
+                            if (quad_wind_circ_flag(ist,ifh) == 'n' 
+     &                          .and.
+     &                          quad_wind_circ_flag(ist,ifh-1) == 'n')
+     &                      then
+                              if ( verb .ge. 3 ) then
+                                print *,' '
+                                print *,'!!! Storm ID = '
+     &                                 ,storm(ist)%tcv_storm_id
+                                print *,'!!! Storm    = '
+     &                                 ,storm(ist)%tcv_storm_name
+                                write (6,432) ifhours(ifh)
+     &                                       ,ifclockmins(ifh)
+                                print *,'!!!     Fixed grid boundary'
+                                print *,'!!!      STOPPAGE for v850'
+                                print *,'!!! This storm is close to the'
+                                print *,'!!! edge of a fixed regional'
+                                print *,'!!! grid, and the closed'
+                                print *,'!!! contour checking has'
+                                print *,'!!! failed for two consecutive'
+                                print *,'!!! lead times, '
+                                print *,'!!! ifh= ',ifh,' and ifh-1= '
+     &                                 ,ifh-1
+                                print *,'!!! TRACKING WILL STOP FOR'
+                                print *,'!!! THIS STORM'
+                                fixlon (ist,ifh) = -999.0
+                                fixlat (ist,ifh) = -999.0
+                                stormswitch(ist) = 2
+                                cycle stormloop
+                              endif
+                            endif
+                          endif
+                        endif
+                      endif  
+                    endif
+
+                  endif
+
                 endif
 
               else
@@ -3566,6 +3879,10 @@ c
       if (allocated(vt850_flag)) deallocate (vt850_flag)
       if (allocated(closed_mslp_ctr_flag)) 
      &  deallocate (closed_mslp_ctr_flag)
+      if (allocated(closed_mslp_ctr_flag2)) 
+     &  deallocate (closed_mslp_ctr_flag2)
+      if (allocated(quad_wind_circ_flag))
+     &  deallocate (quad_wind_circ_flag)
       if (allocated(netcdf_file_time_values)) 
      &  deallocate (netcdf_file_time_values)
       if (allocated(nctotalmins)) 
@@ -4141,6 +4458,130 @@ c     for the GFS ensemble relocation.
 
       endif
 c
+      return
+      end
+
+c
+c-----------------------------------------------------------------------
+c
+c-----------------------------------------------------------------------
+      subroutine probe_for_boundary (imax,jmax,dx,dy,ist
+     &                     ,cparm,fxy,valid_pt,pfixlon,pfixlat
+     &                     ,trkrinfo,close_to_boundary,ipfbret)
+c
+c     ABSTRACT: This subroutine  probes around a storm for either the 
+c     boundaries of the grid within a distance threshold of a storm
+c     center (indicated by input parms pfixlon and pfixlat) or for the
+c     existence of missing data, via the valid_pt array, in order to
+c     know if a model storm is close to the edge of a fixed regional
+c     grid.  If we find even one grid point in our search at an outer
+c     radius (which we will initially set to 400 km) that is either 
+c     beyond the last imax / jmax or is within the grid imax / jmax
+c     boundaries but has missing data (this would be the case for some
+c     of the regional grids that have been re-mapped onto a lat/lon 
+c     grid, such as the HAFS or T-SHiELD grids), then we set the flag
+c     to indicate that we are close to the edge of the grid and return
+c     to the calling routine.  If the flag is set to indicate that the
+c     storm is close to the edge of valid data, then that calling
+c     routine will call other subroutines to apply more rigorous quality
+c     control checking, such as checking for a closed MSLP contour.
+c
+c     INPUT:
+c     imax     Num pts in i direction on input grid
+c     jmax     Num pts in j direction on input grid
+c     dx       Grid spacing in i-direction on input grid
+c     dy       Grid spacing in j-direction on input grid
+c     ist      integer storm number (internal to the  tracker)
+c     cparm    character parameter to track (slp, vort, etc)
+c     fxy      real array of data values 
+c     valid_pt Logical; bitmap indicating if valid data at that pt.
+c     pfixlon  Longitude of the max/min value for the input parameter
+c     pfixlat  Latitude  of the max/min value for the input parameter
+c     trkrinfo derived type containing grid info on user boundaries
+c
+c     OUTPUT:
+c     close_to_boundary  y/n flag that indicates if point is too close
+c              to grid boundary
+c     ipfbret  Return code for this subroutine.
+c
+c     LOCAL:
+c     bounddist The distance threshold used for determining how close
+c               to the boundary of either the grid or invalid data to 
+c               trigger the extra checking of MSLP closed contour or
+c               V850 circulation.
+
+      USE def_vitals; USE trkrparms; USE grid_bounds
+      USE verbose_output
+
+      implicit none
+
+      type (trackstuff) trkrinfo
+
+      character(*) cparm
+      character*1 :: close_to_boundary
+      character*3 :: maxmin
+      integer, parameter :: numazim=16
+      integer  imax,jmax,ipfbret,ist,iazim,icvpret
+      real, parameter :: bounddist=350.
+      real     dx,dy,pfixlon,pfixlat,bear,targlon,targlat
+      real     fxy(imax,jmax)
+      logical(1) valid_pt(imax,jmax)
+c
+      ipfbret = 0
+      close_to_boundary = 'n'
+
+      if (cparm == 'slp') then
+        maxmin = 'min'
+      elseif (cparm == 'zeta') then
+        if (pfixlat >= 0.0) then
+          maxmin = 'max'
+        else
+          maxmin = 'min'
+        endif
+      endif
+
+      azimloop1: do iazim = 1,numazim
+
+        bear = ((iazim-1) * 22.5) + 22.5
+
+        call distbear (pfixlat,pfixlon,bounddist
+     &                ,bear,targlat,targlon)
+
+        ! These first couple checks are just gross checks looking for
+        ! the grid boundary.
+
+        if (targlat >= (glatmax-4.0) .or. 
+     &      targlat <= (glatmin+4.0)) then
+          close_to_boundary = 'y'
+          return
+        endif
+
+        if (targlon <= (glonmin+4.0) .or. 
+     &      targlon >= (glonmax-4.0)) then
+          close_to_boundary = 'y'
+          return
+        endif
+
+        ! This last check analyzes a grid point for invalid data, which
+        ! could happen for grids like HAFS-A, HAFS-B and T-SHiELD where
+        ! data from a different map projection are mapped onto a 
+        ! lat/lon grid, leaving invalid data around the edges.
+
+        call check_valid_point (imax,jmax,dx,dy,fxy,maxmin,valid_pt
+     &      ,targlon,targlat,glatmax,glatmin,glonmax,glonmin
+     &      ,trkrinfo,icvpret)
+
+        if (icvpret /= 0) then
+          if ( verb .ge. 1 ) then
+            print *,'!!! NOT A VALID PT from call in '
+            print *,'!!! probe_for_boundary:  icvpret= ',icvpret
+          endif
+          close_to_boundary = 'y'
+          return
+        endif
+
+      enddo azimloop1
+          
       return
       end
 c
@@ -5599,12 +6040,189 @@ c        xlatsum = xlatsum + 2.*clat(ist,ifh,10)
         print *,'+++ sfc_vorticity:   lon: ',clon(ist,ifh,11),'   lat: '
      &       ,clat(ist,ifh,11)
         print *,'+++ multi-parm mean: lon: ',xmeanlon,'   lat: '
-     &       ,xmeanlat
         print *,'+++ sfc-only mean:   lon: ',xsfclon,'   lat: ',xsfclat
+     &       ,xmeanlat
       endif
 
       return
       end
+
+c-----------------------------------------------------------------------
+c
+c-----------------------------------------------------------------------
+      subroutine check_quadrant_wind_circ (imax,jmax,dx,dy
+     &             ,ist,ifh,xclon,xclat,valid_pt,vt_quad,trkrinfo
+     &             ,quad_wind_circ_check,icqwret)
+c
+c     ABSTRACT: This subroutine calculates the mean Vt separately for
+c     each of the four quadrants of a storm, within a specified distance
+c     (~250 km) of the storm center.  As of its writing (Sept 2020), it
+c     was used as part of the more rigorous QC checking for storms that
+c     are approaching the boundary of a fixed, regional grid.
+
+c     INPUT:
+c     imax     num points is i-direction of input grid
+c     jmax     num points is j-direction of input grid
+c     dx       grid increment in x-direction
+c     dy       grid increment in y-direction
+c     ist      Index for storm number
+c     ifh      Index for forecast hour
+c     xclon    Longitude of center fix passed to this routine, around 
+c              which the Vt calculations will be based.
+c     xclat    Latitude of center fix passed to this routine, around 
+c              which the Vt calculations will be based.
+c     valid_pt Logical; bitmap indicating if valid data at that pt.
+c     trkrinfo derived type detailing user-specified grid info
+c
+c     OUTPUT:
+c     vt_quad  low-level longitude estimate for this storm & time,
+c              with a mean Vt for each of 4 quadrants.
+c     quad_wind_circ_check  character flag ('pass'/'fail') that
+c              indicates if sufficient mean Vt was found in *all* 
+c              4 quadrants.
+c     icqwret  return code from this subroutine
+
+      USE set_max_parms; USE tracked_parms
+      USE trig_vals; USE trkrparms ;USE verbose_output
+
+      implicit none
+
+      type (trackstuff) trkrinfo
+
+      integer, parameter :: numdist=5,numquad=4,num_qtr_azim=6
+      integer  imax,jmax,ist,ifh,iquad,idist,ibiret1,ibiret2,bimct
+      integer  igvtret,iazim,bad_quad_ct,good_quad_ct,icqwret
+      integer  azimuth_ct
+      character*4  quad_wind_circ_check
+      real     rdist(numdist),vt_quad(numquad)
+      real     dx,dy,bear,targlat,targlon,xintrp_u,xintrp_v
+      real     temp_bear,xdist,xclon,xclat,wmag,wmag_sum,wmag_mean,d
+      real     vr,vt,vr_sum,vt_sum,degrees,hemisphere,hem_adj_vt_quad
+      logical(1) valid_pt(imax,jmax)
+c
+      data rdist/50.,100.,150.,200.,250./
+
+      icqwret = 0
+      vt_quad = -999.
+      quad_wind_circ_check = 'null'
+
+      quadloop1: do iquad = 1,4
+
+        wmag_sum   = 0.0
+        vr_sum     = 0.0
+        vt_sum     = 0.0
+        azimuth_ct = 0
+
+        radiusloop1: do idist = 1,numdist
+
+          qtr_azimloop1: do iazim = 1,num_qtr_azim
+
+            bear = ((iquad-1) * 90.) + ((iazim-1) * 15.) + 7.5 
+
+            call distbear (xclat,xclon,rdist(idist)
+     &                    ,bear,targlat,targlon)
+
+            call bilin_int_uneven (targlat,targlon
+     &           ,dx,dy,imax,jmax,trkrinfo,850,'u',xintrp_u
+     &           ,valid_pt,bimct,ibiret1)
+
+            call bilin_int_uneven (targlat,targlon
+     &           ,dx,dy,imax,jmax,trkrinfo,850,'v',xintrp_v
+     &           ,valid_pt,bimct,ibiret2)
+
+            if (ibiret1 == 0 .and. ibiret2 == 0) then
+              wmag = sqrt (xintrp_u**2 + xintrp_v**2)
+              wmag_sum = wmag_sum + wmag
+              call getvrvt (xclon,xclat,targlon,targlat
+     &                     ,xintrp_u,xintrp_v,vr
+     &                     ,vt,igvtret)
+              vr_sum = vr_sum + vr
+              vt_sum = vt_sum + vt
+              azimuth_ct = azimuth_ct + 1
+
+              if ( verb .ge. 3 ) then
+                print '(2x,a6,i2,a21,f8.2,a14,f8.2,2(a11,f8.2))'
+     &               ,'quad= ',iquad,'   intrp wind speed= '
+     &               ,wmag,'    (in kts)= ',wmag*1.9427
+     &               ,'  vr(m/s)= ',vr,'  vt(m/s)= ',vt
+              endif
+
+            endif
+
+          enddo qtr_azimloop1
+
+          if (azimuth_ct > 0) then
+            ! Compute quadrant-azimuthally-averaged winds at 
+            ! this distance
+            wmag_mean      = wmag_sum / float(azimuth_ct)
+            vt_quad(iquad) = vt_sum / float(azimuth_ct)
+          else
+            wmag_mean      = -999.0
+            vt_quad(iquad) = -999.0
+          endif
+
+        enddo radiusloop1
+
+      enddo quadloop1
+
+      if (bimct > 0) then
+        if (verb .ge. 3) then
+          print *,' '
+          print *,'Warning summary: From sub get_quadrant_wind_circ,'
+          print *,'calls to sub bilin_int_uneven resulted in'
+          print *,'(blocked) attempts to access points outside the'
+          print *,'bounds of a regional grid.  Total # of access'
+          print *,'attempts = ',bimct
+          print *,' '
+        endif
+      endif
+
+      if (xclat > 0.0) then
+        hemisphere = 1.0
+      else
+        hemisphere = -1.0
+      endif
+
+      bad_quad_ct = 0
+      good_quad_ct = 0
+
+      quadloop2: do iquad = 1,4
+        if (verb >= 3) then 
+          print '(2x,a6,i2,a18,f8.2,a22,f8.2,a30,f8.2,a11,f4.1)'
+     &          ,'quad= ',iquad,'  vt_quad(iquad)= '
+     &          ,vt_quad(iquad),'(m/s)   Lat of storm= ',xclat
+     &          ,' hemisphere-adjusted vt_quad= '
+     &          ,hemisphere*vt_quad(iquad),'  vthresh= '
+     &          ,trkrinfo%v850_qwc_thresh
+        endif
+
+        if (vt_quad(iquad) < -998.) then
+          bad_quad_ct = bad_quad_ct + 1
+          cycle quadloop2
+        endif
+
+        hem_adj_vt_quad = hemisphere * vt_quad(iquad)
+        
+        if (hem_adj_vt_quad >= trkrinfo%v850_qwc_thresh) then
+          good_quad_ct = good_quad_ct + 1
+        endif
+
+      enddo quadloop2
+
+      if (verb >= 3) then
+        print *,' '
+        print *,'  good_quad_ct = ',good_quad_ct
+      endif
+
+      if (good_quad_ct == 4) then
+        quad_wind_circ_check = 'pass'
+      else
+        quad_wind_circ_check = 'fail'
+      endif
+c
+      return
+      end
+c
 c-----------------------------------------------------------------------
 c
 c-----------------------------------------------------------------------
@@ -11501,7 +12119,7 @@ c
             print *,'... Instead, we will simply use the current '
             print *,'... observed position from TC Vitals and hope that'
             print *,'... it is close enough at the next lead time for '
-            print *,'... the tracker to be able to still track it.'
+            print *,'... the  tracker to be able to still track it.'
             print *,' '
           endif
           extraplat = slatfg(inctcv,ifh)
@@ -12528,7 +13146,7 @@ c-----------------------------------------------------------------------
      &                    ,valid_pt,levsfc,vmax,trkrinfo,rmax,igmwret)
 c
 c     ABSTRACT: This subroutine looks for the maximum near-surface wind
-c     near the storm center.  This subroutine is only concerned with the 
+c     near the storm center.  This subroutine is only concerned with the
 c     value of the max wind, NOT where it's located radially with 
 c     respect to the center.  The value that's returned in vmax is the 
 c     max wind speed in m/s, which are the units the data are stored in.
@@ -13080,7 +13698,8 @@ c OLD get_uv_center for further details on that).
       if (iclose > 0) then
         if (gt345_ct > 0 .and. lt15_ct > 0) then
           ! We have some parms left of the GM and some to the right,
-          ! so we will add (360*lt15_ct) to the sum of the lons (clonsum)
+          ! so we will add (360*lt15_ct) to the sum of the
+          ! lons (clonsum)
           clon_fguess = (clonsum + (360.*float(lt15_ct)))/ iclose
         else
           clon_fguess = clonsum / float(iclose)
@@ -13714,7 +14333,7 @@ c     This subroutine works by converting the winds to Vt and Vr at
 c     each grid point evaluated, relative to each candidate center point
 c     that is being evaluated at the time in the loop.  We then compute
 c     the circulation at each of 24 azimuths surrounding the storm 
-c     center, where circulation = Vt * (length of a 1/24 arc, in meters)  
+c     center, where circulation = Vt * (length of a 1/24 arc, in meters)
 c     This process is repeated for 7 successive radii and the results 
 c     are summed up over all radii, approximating a solid disk 
 c     circulation.  The point at which the circulation is maximized 
@@ -14403,9 +15022,9 @@ c           clockwise each time, all the way up through 352.5.
               azimuth_ct = 0
               vt_azim_sum = 0.0
 
-              ! Compute the length of a 1/numazim arc at this radius, and
-              ! be sure to multiply by 1000 to convert from km to m for
-              ! use in computing the circulation....
+              ! Compute the length of a 1/numazim arc at this radius, 
+              ! and be sure to multiply by 1000 to convert from km to m
+              ! for use in computing the circulation....
 
               circumference = 2 * pi * rdist(idist) * 1000.0
               arclength = circumference / float(numazim)
@@ -17510,13 +18129,13 @@ c      data igparm   /41,41,33,34,33,34,7,7,1,33,34,33,34,11,7,7,81/
 
 c     Model numbers used: (1) AVN, (2) MRF, (3) UKMET, (4) ECMWF,
 c                (5) NGM, (6) Early Eta, (7) NAVGEM, (8) GDAS,
-c                (10) NCEP Ensemble, (11) ECMWF Ensemble,
+c                (10) NCEP Ensemble, (11) Ensemble relocation,
 c                (13) SREF Ensemble,
 c                (14) NCEP Ensemble (from ensstat mean fields),
 c                (15) CMC, (16) CMC Ensemble, (17) HWRF,
 c                (18) HWRF Ensemble, (19) HWRF-DAS (HDAS),
 c                (20) NCEP Ensemble RELOCATION
-c                (21) UKMET hi-res (from NHC)
+c                (21) ECMWF Ensemble
 c                (23) FNMOC Ensemble
 c                (24) HWRF Basin-scale
       
@@ -17551,7 +18170,7 @@ c       height above the ground) and then a level value of 10.  But
 c       ECMWF and UKMET use a level type of 1 (which means ground or 
 c       water surface) and a level value of 0.
 
-        igparm(9) = trkrinfo%g1_mslp_parm_id ! 102 = standard MSLP
+        igparm(9) = trkrinfo%g1_mslp_parm_id ! 2 = standard MSLP
                              ! reduction, 130 = "Eta" or "Membrane" 
                              ! reduction used in GFS, GDAS and others. 
 
@@ -19487,7 +20106,7 @@ c     starting date information, plus the model identifier.  Namelist
 c     stswitch contains the flags for processing for each storm.
 c
       USE inparms; USE set_max_parms; USE atcf; USE trkrparms; USE phase
-      USE structure; USE gfilename_info
+      USE structure; USE gfilename_info; USE contours
       USE verbose_output; USE waitfor_parms; USE netcdf_parms
       USE tracking_parm_prefs
 
@@ -19504,6 +20123,7 @@ c
       namelist/phaseinfo/phaseflag,phasescheme,wcore_depth
       namelist/structinfo/structflag,ikeflag
       namelist/fnameinfo/gmodname,rundescr,atcfdescr
+      namelist/cintinfo/contint_grid_bound_check
       namelist/verbose/verb,verb_g2
       namelist/waitinfo/use_waitfor,wait_min_age,wait_min_size
      &                 ,wait_max_wait,wait_sleeptime
@@ -19531,7 +20151,7 @@ c     Set namelist default values:
   801 continue
       read (5,NML=atcfinfo,END=807)
   807 continue
-      print *,'just before trackerinfo read namelist'
+      print *,'just before  trackerinfo read namelist'
       read (5,NML=trackerinfo,END=809)
   809 continue
       print *,'just after trackerinfo read namelist'
@@ -19541,6 +20161,8 @@ c     Set namelist default values:
   815 continue
       read (5,NML=fnameinfo,END=817)
   817 continue
+      read (5,NML=cintinfo,END=831)
+  831 continue
       read (5,NML=waitinfo,END=821)
   821 continue
       read (5,NML=netcdflist,END=823)
@@ -19596,6 +20218,8 @@ c
      &       ,trkrinfo%use_backup_mslp_grad_check
         write (6,103) ' v850 threshold = v850thresh = '
      &       ,trkrinfo%v850thresh
+        write (6,124) ' v850 quad wind circ threshold = '
+     &       ,' v850_qwc_thresh = ',trkrinfo%v850_qwc_thresh
         write (6,122) ' Flag for using backup 850 mb Vt check= '
      &       ,'use_backup_850_vt_check = '
      &       ,trkrinfo%use_backup_850_vt_check
@@ -19632,6 +20256,7 @@ c
  101    format (a31,f7.2)
  102    format (a16,a7)
  103    format (a31,f7.4)
+ 124    format (a33,a19,f7.4)
  104    format (a19,a8)
  106    format (a46,a41,L1)
  105    format (a48,a6,a1)
@@ -19794,6 +20419,12 @@ c
  133    format ('Forecast run description = rundescr = ',a40)
  135    format ('Optional ATCF / Storm name description = atcfdescr = '
      &       ,a40)
+
+        print *,' '
+        print *,'Values read in for grid bound check interval from'
+     &         ,' cintinfo namelist: '
+        write (6,231) contint_grid_bound_check
+ 231    format ('contint_grid_bound_check = ',f8.3)
 
         print *,' '
         print *,'Value read in for verbose output for most output:'
