@@ -38,7 +38,9 @@ IF(DEFINED hwrf_g2_lib)
   w3emc::w3emc_d
   w3nco::w3nco_d
   bacio::bacio_4
-  ${hwrf_g2_lib})
+  ${hwrf_g2_lib}
+  ${JASPER_LIBRARIES}
+  ${PNG_LIBRARIES})
 ELSE()
   target_link_libraries(
   ${exe_name}
@@ -46,7 +48,9 @@ ELSE()
   w3emc::w3emc_d
   g2::g2_d
   w3nco::w3nco_d
-  bacio::bacio_4)
+  bacio::bacio_4
+  ${JASPER_LIBRARIES}
+  ${PNG_LIBRARIES})
 ENDIF()
 
 
