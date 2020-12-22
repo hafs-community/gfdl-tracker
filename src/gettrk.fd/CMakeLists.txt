@@ -22,9 +22,7 @@ add_executable(${exe_name} ${fortran_srcs})
 IF(DEFINED hwrf_g2_inc)
   target_include_directories(
   ${exe_name} PUBLIC
-  w3emc_d
-  ${hwrf_g2_inc}
-  sigio_4)
+  ${hwrf_g2_inc})
 ELSE()
   target_include_directories(
   ${exe_name} PUBLIC
@@ -37,22 +35,18 @@ IF(DEFINED hwrf_g2_lib)
   target_link_libraries(
   ${exe_name}
   NetCDF::NetCDF_Fortran
-  w3emc_d
-  ${hwrf_g2_lib}
-  w3nco_d
-  bacio_4
-  ${JASPER_LIBRARIES}
-  ${PNG_LIBRARIES})
+  w3emc::w3emc_d
+  w3nco::w3nco_d
+  bacio::bacio_4
+  ${hwrf_g2_lib})
 ELSE()
   target_link_libraries(
   ${exe_name}
   NetCDF::NetCDF_Fortran
-  w3emc_d
-  g2_d
-  w3nco_d
-  bacio_4
-  ${JASPER_LIBRARIES}
-  ${PNG_LIBRARIES})
+  w3emc::w3emc_d
+  g2::g2_d
+  w3nco::w3nco_d
+  bacio::bacio_4)
 ENDIF()
 
 
