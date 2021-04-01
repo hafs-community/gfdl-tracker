@@ -95,7 +95,13 @@ c
           real          max_mslp_850 ! Max allowable distance between 
                                  ! the tracker-found center fixes for 
                                  ! mslp and 850 zeta.
-          real          v850thresh ! min avg 850 Vt to be maintained
+          real          v850thresh ! minimum azimuthally-averaged 850 Vt
+                                 ! to be maintained
+          real          v850_qwc_thresh ! min avg 850 Vt that must be
+                                 ! maintained in *each* quadrant for the
+                                 ! quadrant wind check routine that is
+                                 ! done for storms close to the lateral
+                                 ! boundary of fixed, regional grids.
           character*1   use_backup_850_vt_check ! If an 850 mb wcirc fix
                                  ! could not be made, do you still want
                                  ! to do an 850 mb Vt wind check, but 
@@ -104,7 +110,7 @@ c
                                  ! wcirc fix position to search around).
                                  ! Has a value of 'y' or 'n'.
           character*8   gridtype ! 'global' or 'regional'
-          real          contint  ! Contour interval to be used for 
+          real          contint  ! MSLP contour interval to be used for 
                                  ! "midlat" or "tcgen" cases.     
           logical       want_oci ! Flag for whether to compute & write
                                  ! out roci for a trkrtype=tracker run
@@ -179,6 +185,10 @@ c
 c
       module contours
         integer, parameter :: maxconts=100 ! max # of cont. intervals
+        real, save  :: contint_grid_bound_check  ! Contour interval to
+                                 ! be used for MSLP for the fixed grid
+                                 ! boundary check that I implemented
+                                 ! in Sep 2020.
         type cint_stuff  ! Define a new type for contour interval info
           real    :: xmaxcont ! max contour level in a field
           real    :: xmincont ! min contour level in a field
