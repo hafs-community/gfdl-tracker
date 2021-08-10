@@ -2,9 +2,9 @@
 ## Module file for tracker
 #############################################################
 proc ModulesHelp { } {
-    puts stderr "Set environment veriables for compiling or running HAFS"
+    puts stderr "Set environment veriables for compiling or running tracker"
 }
-module-whatis " HAFS model prerequisites"
+module-whatis " tracker model prerequisites"
 
 module load PrgEnv-intel
 module rm intel
