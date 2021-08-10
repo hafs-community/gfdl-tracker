@@ -5,7 +5,7 @@ source ./machine-setup.sh > /dev/null 2>&1
 
 
 module use ../modulefiles
-module load modulefile.hafs.$target
+module load modulefile.$target
 module list
 
 
