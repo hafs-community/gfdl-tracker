@@ -2,9 +2,9 @@
 ## Module file for tracker
 #############################################################
 proc ModulesHelp { } {
-    puts stderr "Set environment veriables for compiling or running tracker"
+    puts stderr "Set environment variables for compiling or running tracker"
 }
-module-whatis " tracker model prerequisites"
+module-whatis "tracker prerequisites"
 
 module load PrgEnv-intel
 module rm intel
