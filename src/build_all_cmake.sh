@@ -21,7 +21,7 @@ elif [ $target = jet ]; then
   export FC=ifort
   export F90=ifort
   export CC=icc
-elif [ $target = wcoss_cray ]; then
+elif [ $target = wcoss_cray ] || [ $target = wcoss2 ] ; then
   export FC=ftn
   export F90=ftn
   export CC=icc
