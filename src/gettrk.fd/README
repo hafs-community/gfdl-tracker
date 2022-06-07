@@ -1,4 +1,63 @@
 #################################################################
+On June 02, 2022, we got a new version of the GFDL tracker (gettrk.fd)
+from Tim Marchok (NOAA/GFDL).
+
+Here are the description of changes from Tim's email:
+
+New radii diagnosis scheme:  
+There were two concerns with the radii scheme from the old tracker.  First,
+outlier values were being included.  Second... and related... we needed
+assurance that values that were being diagnosed could be considered part of the
+mean circulation of the TC.  The previous version of the tracker assessed the
+wind values at individual points.  The updated scheme computes wind values in
+radial bins, where these bins have a distance interval, dr, of 3 km.  Wind
+values are computed in each quadrant at an azimuthal increment of 1 degree,
+thereby giving 90 wind values in each bin.  The wind value assigned to each
+radial bin is the one associated with the 95th percentile value in that bin,
+helping to ensure that if an R34 value is diagnosed at a given radius, there is
+likely greater areal coverage of winds at that radius exceeding 34 kts.  Once
+an R34 value is diagnosed initially, it must pass a check to ensure that it can
+be considered part of the mean circulation.  Using the Vmax and axisymmetric
+Rmax diagnosed by the tracker at this lead time for this storm, the Holland
+wind profile tangential wind at this radius is computed, and the mean cyclonic
+tangential wind in this radial bin (and several more radial bins radially
+inward) must be at least 50% of the Holland wind profile value at this radius.
+If it's not, then the search for R34 continues radially inward.
+
+Axisymmetric RMW:
+The old tracker diagnoses RMW at the point where the Vmax was detected.  While
+this is still done and reported in the same location in the output atcf file,
+an additional algorithm is included to evaluate the axisymmetric RMW using
+computation in radial bins.  This axisymmetric RMW value is printed out at the
+end of each atcf record, with the distance and the wind values being printed
+out after a string, "ARMW".
+
+Vertical Shear:
+This is optional and its computation is controlled by "shearflag" in the
+namelist.  This computes 850-200 mb vertical shear using the same exact
+algorithm as in SHIPS, included the same vortex removal scheme.  This shear
+value is printed out at the end of each atcf record, with the direction and
+magnitude values printed out after a string, "SHR82".
+
+Area-averaged SST:
+This is optional and its computation is controlled by "sstflag" in the
+namelist.  This computes the area-averaged SST, using the tracker's Barnes
+analysis, centered on the TC fix at the current lead time.  This SST value is
+printed out at the end of each atcf record after a string, "SST".
+
+Genesis diagnostics:
+These are optional and their computation is controlled by "genflag" in the
+namelist.  Their values are *not* written out to the standard atcf file, rather
+they are written to two other modified atcf files in units 66 and 68.  All of
+these contain the Barnes analysis-averaged value of each metric, centered on
+the TC for each lead time.
+  850 mb convergence
+  850 mb moisture convergence
+  Mean RH in the 800-600 mb layer
+  Mean RH in the 1000-925 mb layer
+  500 mb omega
+
+#################################################################
 On September 04, 2019, we got a new version of the GFDL tracker (gettrk.fd)
 from Tim Marchok (NOAA/GFDL).
 
