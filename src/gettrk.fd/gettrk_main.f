@@ -274,10 +274,15 @@ c                       GM-wrapping in a few different areas in both
 c                       subroutines.
 c 
 c
+c   07-09-22 Biju       Open unit 555 to read namelist file instead of  
+c                       redirected piping the namelist to executable.
+c
+c
 c Input files:
 c   unit   11    Unblocked GRIB1 file containing model data
 c   unit   12    Text file containing TC Vitals card for current time
 c   unit   31    Unblocked GRIB index file
+c   unit  555    namelist file(namelist.gettrk)
 c
 c Output files:
 c   unit   61    Output file with forecast positions every 12h from 
@@ -24721,41 +24726,42 @@ c     Set namelist default values:
       trkrinfo%gribver=1   ! Set to GRIB1 as default, can be set to
                            ! something else in the namelist input.
 
-      read (5,NML=datein,END=801)
+      open(555,file='namelist.gettrk',status='old',form='formatted')
+      read (555,NML=datein,END=801)
   801 continue
-      read (5,NML=atcfinfo,END=807)
+      read (555,NML=atcfinfo,END=807)
   807 continue
       print *,'just before  trackerinfo read namelist'
-      read (5,NML=trackerinfo,END=809)
+      read (555,NML=trackerinfo,END=809)
   809 continue
       print *,'just after trackerinfo read namelist'
-      read (5,NML=phaseinfo,END=811)
+      read (555,NML=phaseinfo,END=811)
   811 continue
-      read (5,NML=structinfo,END=815)
+      read (555,NML=structinfo,END=815)
   815 continue
-      read (5,NML=fnameinfo,END=817)
+      read (555,NML=fnameinfo,END=817)
   817 continue
-      read (5,NML=cintinfo,END=831)
+      read (555,NML=cintinfo,END=831)
   831 continue
-      read (5,NML=waitinfo,END=821)
+      read (555,NML=waitinfo,END=821)
   821 continue
-      read (5,NML=netcdflist,END=823)
+      read (555,NML=netcdflist,END=823)
   823 continue
-      read (5,NML=parmpreflist,END=825)
+      read (555,NML=parmpreflist,END=825)
   825 continue
-      read (5,NML=verbose,END=819,ERR=833)
+      read (555,NML=verbose,END=819,ERR=833)
   819 continue
       goto 837
   833 continue
       verb = 1
   837 continue
-      read (5,NML=sheardiaginfo,END=839)
+      read (555,NML=sheardiaginfo,END=839)
   839 continue
-      read (5,NML=sstdiaginfo,END=840)
+      read (555,NML=sstdiaginfo,END=840)
   840 continue
-      read (5,NML=gendiaginfo,END=841)
+      read (555,NML=gendiaginfo,END=841)
   841 continue
-
+      close(555)
       print *,'in read_nlists, verb= ',verb
 
       if ( verb .ge. 0 ) then
