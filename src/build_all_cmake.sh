@@ -21,13 +21,9 @@ elif [ $target = jet ]; then
   export FC=ifort
   export F90=ifort
   export CC=icc
-elif [ $target = wcoss_cray ] || [ $target = wcoss2 ] ; then
+elif [ $target = wcoss2 ] ; then
   export FC=ftn
   export F90=ftn
-  export CC=icc
-elif [ $target = wcoss_dell_p3 ]; then
-  export FC=ifort
-  export F90=ifort
   export CC=icc
 else
   echo "Unknown machine = $target"
@@ -40,12 +36,7 @@ if [ -d "build" ]; then
 fi
 mkdir build
 cd build
-
-if [ $target = wcoss_cray ]; then
-  cmake .. -DCMAKE_Fortran_COMPILER=ftn -DCMAKE_C_COMPILER=cc
-else
-  cmake .. -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_C_COMPILER=icc
-fi
+cmake .. -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_C_COMPILER=icc
 make -j 8 VERBOSE=1
 make install
 
