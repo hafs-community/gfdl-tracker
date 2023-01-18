@@ -36,7 +36,7 @@ if [ -d "build" ]; then
 fi
 mkdir build
 cd build
-cmake .. -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_C_COMPILER=icc
+cmake .. -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_C_COMPILER=icc -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 make -j 8 VERBOSE=1
 make install
 
