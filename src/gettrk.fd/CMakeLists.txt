@@ -41,7 +41,6 @@ IF(DEFINED hwrf_g2_lib)
   ${exe_name}
   NetCDF::NetCDF_Fortran
   w3emc::w3emc_d
-  w3nco::w3nco_d
   bacio::bacio_4
   ${hwrf_g2_lib}
   ${JASPER_LIBRARIES}
@@ -52,7 +51,6 @@ ELSE()
   NetCDF::NetCDF_Fortran
   w3emc::w3emc_d
   g2::g2_d
-  w3nco::w3nco_d
   bacio::bacio_4
   ${JASPER_LIBRARIES}
   ${PNG_LIBRARIES})
