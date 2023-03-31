@@ -1,4 +1,13 @@
 #################################################################
+On March 31st, 2023, sync with version v1.0.1 of the GFDL tracker (gettrk.fd)
+from Tim Marchok (NOAA/GFDL).
+
+https://github.com/NOAA-GFDL/GFDL-VortexTracker/releases/tag/v1.0.1
+
+Meanwhile, unify to use AA instead of NA as basinid for NIO AA storms in all
+source code locations in gettrk_main.f.
+
+#################################################################
 On March 23rd, 2023, we got a new version of the GFDL tracker (gettrk.fd)
 from Tim Marchok (NOAA/GFDL).
 
