@@ -31,7 +31,6 @@ target_link_libraries(
   ${exe_name}
   w3emc::w3emc_d
   g2::g2_d
-  w3nco::w3nco_d
   bacio::bacio_4)
 
 

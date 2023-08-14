@@ -17,7 +17,7 @@ load(pathJoin("craype", craype_ver))
 cray_mpich_ver=os.getenv("cray_mpich_ver") or "8.1.7"
 load(pathJoin("cray-mpich", cray_mpich_ver))
 
-cray_pals_ver=os.getenv("cray_pals_ver") or "1.0.12"
+cray_pals_ver=os.getenv("cray_pals_ver") or "1.2.2"
 load(pathJoin("cray-pals", cray_pals_ver))
 
 jasper_ver=os.getenv("jasper_ver") or "2.0.25"
@@ -44,9 +44,6 @@ load(pathJoin("g2", g2_ver))
 
 w3emc_ver=os.getenv("w3emc_ver") or "2.9.1"
 load(pathJoin("w3emc", w3emc_ver))
-
-w3nco_ver=os.getenv("w3nco_ver") or "2.4.1"
-load(pathJoin("w3nco", w3nmc_ver))
 
 bacio_ver=os.getenv("bacio_ver") or "2.4.1"
 load(pathJoin("bacio", bacio_ver))
