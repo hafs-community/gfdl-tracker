@@ -702,7 +702,8 @@ c
       integer   ioaret,ioaxret,ifgcret,ifmret,igugret,isoiret,icccret
       integer   igrret,igmwret,iorret,ignret,iovret,icbret,igucret,ita
       integer   ifilret,ifret,iaret,isret,iotmret,iwa,iisa,sl_counter
-      integer   iicret,igcret,pfcret,igwcret,imbowret,iatret,ioapret
+      integer   iicret,igcret,igwcret,imbowret,iatret,ioapret
+      integer(kind=8) :: pfcret
       logical(1), allocatable :: valid_pt(:,:)
       logical(1), allocatable :: masked_outc(:,:),masked_out(:,:)
       logical(1) readflag(nreadparms),calcparm(maxtp,maxstorm)
@@ -722,8 +723,9 @@ c
       integer   igfwret,ioiret,igisret,iofwret,iowsret,igwsret,igscret
       integer   pdf_ct_tot,lugb,lugi,iret,icmcf,iccfh,ivt8f,icqwret
       integer   igsret,issta,iq850a,irha,ispfha,itempa,iomegaa
-      integer   waitfor_gfile_status,waitfor_ifile_status,ncfile_tmax
-      integer   wait_max_ifile_wait,ivr,r34_good_ct,itha,ilma,inctcv
+      integer   ncfile_tmax,ivr,r34_good_ct,itha,ilma,inctcv
+      integer(kind=8) :: waitfor_gfile_status,waitfor_ifile_status
+      integer(kind=8) :: wait_max_ifile_wait
       integer   ix_radii_beg,ix_radii_end,n_r34_iter
       integer   date_time(8),igarret
       character (len=10) big_ben(3)
