@@ -272,6 +272,9 @@ c                       bilin_int_uneven) with how Greenwich Meridian
 c                       wrapping was being handled.  I fixed the 
 c                       GM-wrapping in a few different areas in both
 c                       subroutines.
+c
+c   23-07-31  Marchok   Fixed an error in output_atcfunix where I had 
+c                       an extra comma in the output record.
 c 
 c
 c Input files:
@@ -10181,7 +10184,7 @@ c
       integer vradius(3,4),icps_vals(3)
       character  basinid*2,clatns*1,clonew*1,wcore_flag*1
       character comma_fill1*48,comma_fill2*31,comma_filler*79
-      character comma_fill1n*27,comma_fill2n*44
+      character comma_fill1n*25,comma_fill2n*44
 
       if ( verb .ge. 3 ) then
         print *,'TTT top of atcfunix, ist= ',ist,' ifh= ',ifcsthour
@@ -10391,7 +10394,7 @@ c      comma_fill1 = ',   0,   0,    ,   0,    ,   0,   0,           ,'
 c      comma_fill2 = '  ,   ,    ,   0,   0,   0,   0'
 c      comma_filler = comma_fill1//comma_fill2
 
-      comma_fill1n = ',   0,   0,    ,   0,    , '
+      comma_fill1n = ',   0,   0,    ,   0,    '
       comma_fill2n = ',           ,  ,   ,    ,   0,   0,   0,   0'
 
       if (trkrinfo%type == 'midlat' .or. trkrinfo%type == 'tcgen') then
@@ -10502,13 +10505,13 @@ c      comma_filler = comma_fill1//comma_fill2
 
    81 format (a2,', ',a2,', ',i10.10,', 03, ',a4,', ',i3.3,', ',i3,a1
      &       ,', ',i4,a1,', ',i3,', ',i4,', ',a12,4(', ',i4.4)
-     &       ,2(', ',i4),', ',i3,a27,2(', ',i3),a44
+     &       ,2(', ',i4),', ',i3,a25,2(', ',i3),a44
      &       ,',       THERMO PARAMS'
      &       ,3(', ',i7),', ',a1,', ',i2,', DT, -999, SHR82, ',i4,', '
      &       ,i3,', SST, ',i4,', ARMW',2(', ',i3))
    91 format (a2,', ',a4,', ',i10.10,', 03, ',a4,', ',i3.3,', ',i3,a1
      &       ,', ',i4,a1,', ',i3,', ',i4,', ',a12,4(', ',i4.4)
-     &       ,2(', ',i4),', ',i3,a27,2(', ',i3),a44
+     &       ,2(', ',i4),', ',i3,a25,2(', ',i3),a44
      &       ,',       THERMO PARAMS'
      &       ,3(', ',i7),', ',a1,', ',i2,', DT, -999, SHR82, ',i4,', '
      &       ,i3,', SST, ',i4,', ARMW',2(', ',i3)', ',a3)
