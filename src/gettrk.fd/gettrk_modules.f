@@ -468,12 +468,12 @@ c
 c
       module waitfor_parms
         character*1 :: use_waitfor ! y or n, for waiting for input files
-        integer :: wait_min_age    ! min age (in seconds)... time since
-                                   ! last file modification
-        integer :: wait_min_size   ! minimum file size in bytes
-        integer :: wait_max_wait   ! max total wait time in seconds 
-        integer :: wait_sleeptime  ! number of seconds to wait between 
-                                   ! checks
+        integer(kind=8) :: wait_min_age    ! min age (in seconds)... time since
+                                           ! last file modification
+        integer(kind=8) :: wait_min_size   ! minimum file size in bytes
+        integer(kind=8) :: wait_max_wait   ! max total wait time in seconds 
+        integer(kind=8) :: wait_sleeptime  ! number of seconds to wait between 
+                                           ! checks
         integer, parameter :: pfc_cmd_len = 800
         character*1 :: use_per_fcst_command ! enable per_fcst_command
         character(pfc_cmd_len) :: per_fcst_command ! command to run every forecast time

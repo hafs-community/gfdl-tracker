@@ -272,6 +272,9 @@ c                       bilin_int_uneven) with how Greenwich Meridian
 c                       wrapping was being handled.  I fixed the 
 c                       GM-wrapping in a few different areas in both
 c                       subroutines.
+c
+c   23-07-31  Marchok   Fixed an error in output_atcfunix where I had 
+c                       an extra comma in the output record.
 c 
 c
 c Input files:
@@ -722,7 +725,8 @@ c
       integer   ioaret,ioaxret,ifgcret,ifmret,igugret,isoiret,icccret
       integer   igrret,igmwret,iorret,ignret,iovret,icbret,igucret,ita
       integer   ifilret,ifret,iaret,isret,iotmret,iwa,iisa,sl_counter
-      integer   iicret,igcret,pfcret,igwcret,imbowret,iatret,ioapret
+      integer   iicret,igcret,igwcret,imbowret,iatret,ioapret
+      integer(kind=8) :: pfcret
       logical(1), allocatable :: valid_pt(:,:)
       logical(1), allocatable :: masked_outc(:,:),masked_out(:,:)
       logical(1) readflag(nreadparms),calcparm(maxtp,maxstorm)
@@ -742,8 +746,9 @@ c
       integer   igfwret,ioiret,igisret,iofwret,iowsret,igwsret,igscret
       integer   pdf_ct_tot,lugb,lugi,iret,icmcf,iccfh,ivt8f,icqwret
       integer   igsret,issta,iq850a,irha,ispfha,itempa,iomegaa
-      integer   waitfor_gfile_status,waitfor_ifile_status,ncfile_tmax
-      integer   wait_max_ifile_wait,ivr,r34_good_ct,itha,ilma,inctcv
+      integer   ncfile_tmax,ivr,r34_good_ct,itha,ilma,inctcv
+      integer(kind=8) :: waitfor_gfile_status,waitfor_ifile_status
+      integer(kind=8) :: wait_max_ifile_wait
       integer   ix_radii_beg,ix_radii_end,n_r34_iter
       integer   date_time(8),igarret
       integer(kind=8)   dum1,dum2,dum3
@@ -10179,7 +10184,7 @@ c
       integer vradius(3,4),icps_vals(3)
       character  basinid*2,clatns*1,clonew*1,wcore_flag*1
       character comma_fill1*48,comma_fill2*31,comma_filler*79
-      character comma_fill1n*27,comma_fill2n*44
+      character comma_fill1n*25,comma_fill2n*44
 
       if ( verb .ge. 3 ) then
         print *,'TTT top of atcfunix, ist= ',ist,' ifh= ',ifcsthour
@@ -10389,7 +10394,7 @@ c      comma_fill1 = ',   0,   0,    ,   0,    ,   0,   0,           ,'
 c      comma_fill2 = '  ,   ,    ,   0,   0,   0,   0'
 c      comma_filler = comma_fill1//comma_fill2
 
-      comma_fill1n = ',   0,   0,    ,   0,    , '
+      comma_fill1n = ',   0,   0,    ,   0,    '
       comma_fill2n = ',           ,  ,   ,    ,   0,   0,   0,   0'
 
       if (trkrinfo%type == 'midlat' .or. trkrinfo%type == 'tcgen') then
@@ -10500,13 +10505,13 @@ c      comma_filler = comma_fill1//comma_fill2
 
    81 format (a2,', ',a2,', ',i10.10,', 03, ',a4,', ',i3.3,', ',i3,a1
      &       ,', ',i4,a1,', ',i3,', ',i4,', ',a12,4(', ',i4.4)
-     &       ,2(', ',i4),', ',i3,a27,2(', ',i3),a44
+     &       ,2(', ',i4),', ',i3,a25,2(', ',i3),a44
      &       ,',       THERMO PARAMS'
      &       ,3(', ',i7),', ',a1,', ',i2,', DT, -999, SHR82, ',i4,', '
      &       ,i3,', SST, ',i4,', ARMW',2(', ',i3))
    91 format (a2,', ',a4,', ',i10.10,', 03, ',a4,', ',i3.3,', ',i3,a1
      &       ,', ',i4,a1,', ',i3,', ',i4,', ',a12,4(', ',i4.4)
-     &       ,2(', ',i4),', ',i3,a27,2(', ',i3),a44
+     &       ,2(', ',i4),', ',i3,a25,2(', ',i3),a44
      &       ,',       THERMO PARAMS'
      &       ,3(', ',i7),', ',a1,', ',i2,', DT, -999, SHR82, ',i4,', '
      &       ,i3,', SST, ',i4,', ARMW',2(', ',i3)', ',a3)
