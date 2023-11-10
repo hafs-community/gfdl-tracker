@@ -20,6 +20,9 @@ load(pathJoin("cray-mpich", cray_mpich_ver))
 cray_pals_ver=os.getenv("cray_pals_ver") or "1.2.2"
 load(pathJoin("cray-pals", cray_pals_ver))
 
+prepend_path("MODULEPATH", "/apps/test/hpc-stack/i-19.1.3.304__m-8.1.12__h-1.14.0__n-4.9.2__p-2.5.10__e-8.4.2/modulefiles/compiler/intel/19.1.3.304")
+prepend_path("MODULEPATH", "/apps/test/hpc-stack/i-19.1.3.304__m-8.1.12__h-1.14.0__n-4.9.2__p-2.5.10__e-8.4.2/modulefiles/mpi/intel/19.1.3.304/cray-mpich/8.1.12")
+
 jasper_ver=os.getenv("jasper_ver") or "2.0.25"
 load(pathJoin("jasper", jasper_ver))
 
@@ -33,10 +36,10 @@ libjpeg_ver=os.getenv("libjpeg_ver") or "9c"
 load(pathJoin("libjpeg", libjpeg_ver))
 setenv("JPEG_LIBRARIES", "/apps/spack/libjpeg/9c/intel/19.1.3.304/jkr3isi257ktoouprwaxcn4twtye747z/lib")
 
-hdf5_ver=os.getenv("hdf5_ver") or "1.10.6"
+hdf5_ver=os.getenv("hdf5_ver") or "1.14.0"
 load(pathJoin("hdf5", hdf5_ver))
 
-netcdf_ver=os.getenv("netcdf_ver") or "4.7.4"
+netcdf_ver=os.getenv("netcdf_ver") or "4.9.2"
 load(pathJoin("netcdf", netcdf_ver))
 
 g2_ver=os.getenv("g2_ver") or "3.4.5"
