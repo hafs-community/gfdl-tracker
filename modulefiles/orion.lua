@@ -8,7 +8,7 @@ load("noaatools")
 cmake_ver=os.getenv("cmake_ver") or "3.22.1"
 load(pathJoin("cmake", cmake_ver))
 
-prepend_path("MODULEPATH", "/work/noaa/epic-ps/hpc-stack/libs/intel/2022.1.2/modulefiles/stack")
+prepend_path("MODULEPATH", "/work/noaa/epic/role-epic/contrib/orion/hpc-stack/intel-2022.1.2/modulefiles/stack")
 
 hpc_ver=os.getenv("hpc_ver") or "1.2.0"
 load(pathJoin("hpc", hpc_ver))
@@ -40,7 +40,7 @@ load(pathJoin("bacio", bacio_ver))
 g2_ver=os.getenv("g2_ver") or "3.4.5"
 load(pathJoin("g2", g2_ver))
 
-g2tmpl_ver=os.getenv("g2tmpl_ver") or "1.10.0"
+g2tmpl_ver=os.getenv("g2tmpl_ver") or "1.10.2"
 load(pathJoin("g2tmpl", g2tmpl_ver))
 
 w3emc_ver=os.getenv("w3emc_ver") or "2.9.2"
