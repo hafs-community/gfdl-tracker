@@ -34,10 +34,10 @@ load(pathJoin("libjpeg", libjpeg_ver))
 setenv("JPEG_LIBRARIES", "/apps/spack/libjpeg/9c/intel/19.1.3.304/jkr3isi257ktoouprwaxcn4twtye747z/lib")
 
 hdf5_ver=os.getenv("hdf5_ver") or "1.14.0"
-load(pathJoin("hdf5-B", hdf5_ver))
+load(pathJoin("hdf5-A", hdf5_ver))
 
 netcdf_ver=os.getenv("netcdf_ver") or "4.9.2"
-load(pathJoin("netcdf-B", netcdf_ver))
+load(pathJoin("netcdf-A", netcdf_ver))
 
 g2_ver=os.getenv("g2_ver") or "3.4.5"
 load(pathJoin("g2", g2_ver))
