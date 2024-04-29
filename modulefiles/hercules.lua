@@ -1,24 +1,20 @@
 help([[
-loads hafs_tracker modulefile and related set environment veriables on Hera
+loads hafs_tracker modulefile and related set environment veriables on Hercules
 ]])
 
-prepend_path("MODULEPATH", "/contrib/sutils/modulefiles")
-load("sutils")
-load("hpss")
+load("contrib")
+load("noaatools") 
 
-prepend_path("MODULEPATH", "/scratch1/NCEPDEV/nems/role.epic/spack-stack/spack-stack-1.6.0/envs/unified-env-rocky8/install/modulefiles/Core")
+prepend_path("MODULEPATH", "/work/noaa/epic/role-epic/spack-stack/hercules/spack-stack-1.6.0/envs/unified-env/install/modulefiles/Core")
 
-stack_intel_ver=os.getenv("stack_intel_ver") or "2021.5.0"
+stack_intel_ver=os.getenv("stack_intel_ver") or "2021.9.0"
 load(pathJoin("stack-intel", stack_intel_ver))
 
-stack_impi_ver=os.getenv("stack_impi_ver") or "2021.5.1"
+stack_impi_ver=os.getenv("stack_impi_ver") or "2021.9.0"
 load(pathJoin("stack-intel-oneapi-mpi", stack_impi_ver))
 
-python_ver=os.getenv("python_ver") or "3.10.13"
-load(pathJoin("python", python_ver))
-
 cmake_ver=os.getenv("cmake_ver") or "3.23.1"
-load(pathJoin("cmake", cmake_ver))
+load(pathJoin("cmake", cmake_ver)) 
 
 jasper_ver=os.getenv("jasper_ver") or "2.0.32"
 load(pathJoin("jasper", jasper_ver))
@@ -32,7 +28,7 @@ load(pathJoin("libpng", libpng_ver))
 hdf5_ver=os.getenv("hdf5_ver") or "1.14.0"
 load(pathJoin("hdf5", hdf5_ver))
 
-netcdf_c_ver=os.getenv("netcdf_c_ver") or "4.9.2" 
+netcdf_c_ver=os.getenv("netcdf_c_ver") or "4.9.2"
 load(pathJoin("netcdf-c", netcdf_c_ver))
 
 netcdf_fortran_ver=os.getenv("netcdf_fortran_ver") or "4.6.1"
@@ -56,6 +52,6 @@ load(pathJoin("sigio", sigio_ver))
 setenv("CMAKE_C_COMPILER", "mpiicc")
 setenv("CMAKE_CXX_COMPILER", "mpiicpc")
 setenv("CMAKE_Fortran_COMPILER", "mpiifort")
-setenv("CMAKE_Platform", "hera.intel")
+setenv("CMAKE_Platform", "jet.intel")
 
 whatis("Description: HAFS Application environment")
