@@ -13430,7 +13430,7 @@ c     identifier at the beginning of the modified atcfunix record.
 87    format (a2,', ',a4,', ',i10.10,'_F',i3.3,'_',i3.3,a1,'_',i4.4,a1
      &       ,'_',a3,', ',i10.10,', 03, ',a4,', ',i3.3,', ',i5
      &       ,', ',i5,', ',i3,', ',i4,9(', ',a1,', ',i5,', ',i5,', '
-     &       ,i6))
+     &       ,i7))
 
 c     bug fix for IBM: flush the output stream so it actually writes
       flush(81)
