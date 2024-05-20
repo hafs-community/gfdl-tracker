@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
+#include <time.h>
 
 void c_run_command(int64_t *retval,char *cmd) {
   *retval=system(cmd);
@@ -31,7 +32,7 @@ void cwaitfor(int64_t *status, int64_t *minage, int64_t *minsize, int64_t *maxwa
                filename,size,age,*minsize,*minage);
       }
     } else {
-      fprintf(stderr,"%s: cannot stat: %d\n",filename,errno);
+      fprintf(stderr,"%s: Not available yet.",filename);
     }
     fprintf(stderr,"%s: sleep %d\n",filename,*sleeptime);
     sleep(*sleeptime);
