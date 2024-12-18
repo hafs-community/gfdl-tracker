@@ -56,6 +56,6 @@ setenv("FC", "ftn")
 setenv("CMAKE_C_COMPILER", "cc")
 setenv("CMAKE_CXX_COMPILER", "CC")
 setenv("CMAKE_Fortran_COMPILER", "ftn")
-setenv("CMAKE_Platform", "gaeaC6")
+setenv("CMAKE_Platform", "gaeac6")
 
 whatis("Description: HAFS build environment")

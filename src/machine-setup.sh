@@ -80,7 +80,7 @@ elif [[ -d /lustre && -d /ncrc ]] ; then
     module purge
 elif [[ "$(hostname)" == "gaea6"* && -d /gpfs/f6 ]] ; then
   source /opt/cray/pe/lmod/8.7.31/init/$__ms_shell
-  target=gaeaC6
+  target=gaeac6
 elif [[ "$(hostname)" =~ "odin" ]]; then
     target="odin"
 else
