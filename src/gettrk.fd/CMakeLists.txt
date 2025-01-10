@@ -37,8 +37,8 @@ IF(DEFINED hwrf_g2_inc)
 ELSE()
   target_include_directories(
   ${exe_name} PUBLIC
-  w3emc_d
   g2_d
+  w3emc_d
   sigio_4)
 ENDIF()
 
@@ -55,8 +55,8 @@ ELSE()
   target_link_libraries(
   ${exe_name}
   NetCDF::NetCDF_Fortran
-  w3emc::w3emc_d
   g2::g2_d
+  w3emc::w3emc_d
   bacio::bacio_4
   ${JASPER_LIBRARIES}
   ${PNG_LIBRARIES})

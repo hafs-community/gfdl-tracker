@@ -23,14 +23,14 @@ add_executable(${exe_name} ${fortran_srcs})
 
 target_include_directories(
   ${exe_name} PUBLIC
-  w3emc::w3emc_d
   g2::g2_d
+  w3emc::w3emc_d
   sigio::sigio_4)
 
 target_link_libraries(
   ${exe_name}
-  w3emc::w3emc_d
   g2::g2_d
+  w3emc::w3emc_d
   bacio::bacio_4)
 
 
