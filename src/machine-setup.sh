@@ -35,6 +35,14 @@ elif [[ -d /scratch1/NCEPDEV ]] ; then
     fi
     target=hera
     module purge
+elif [[ -d //tds_scratch2/SYSADMIN/pilot-users ]]; then
+    # We are on NOAA Ursa
+    if ( ! eval module help > /dev/null 2>&1 ) ; then
+        echo load the module command 1>&2
+        source $MODULESHOME/init/$__ms_shell
+    fi
+    target=ursa
+    module purge
 elif [[ -d /work/noaa ]] ; then
     # We are on MSU Orion/Hercules
     if [[ "$(hostname)" =~ "hercules" ]] ; then
