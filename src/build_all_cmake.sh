@@ -11,7 +11,7 @@ module list
 #Explicitly pass to linker that executable stack is not needed 
 USE_NOEXECSTACK=${USE_NOEXECSTACK:-ON}
 
-if [ $target = hera ] || [ $target = orion ] || [ $target = jet ] || [ $target = hercules ]; then
+if [ $target = hera ] || [ $target = orion ] || [ $target = jet ] || [ $target = hercules ] || [ $target = ursa ]; then
   export USE_NOEXECSTACK=OFF
 fi
 
