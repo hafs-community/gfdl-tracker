@@ -9518,7 +9518,7 @@ c     south of targlat....
       if (jn < 1 .or. js < 1) then
         if ( verb .ge. 1 .and. bimct == 0) then
           print *,' '
-          print *,'!!! ERROR: jn < 0 or js < 0 in subroutine  '
+          print *,'!!! WARNING: jn < 0 or js < 0 in subroutine  '
           print *,'!!! bilin_int_uneven.  Returning to calling '
           print *,'!!! routine after assigning wind value of -999.'
           print *,'!!! jn= ',jn,' js= ',js,' jmax= ',jmax
