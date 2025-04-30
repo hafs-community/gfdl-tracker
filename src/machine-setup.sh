@@ -35,7 +35,7 @@ elif [[ -d /scratch1/NCEPDEV ]] ; then
     fi
     target=hera
     module purge
-elif [[ -d //tds_scratch2/SYSADMIN/pilot-users ]]; then
+elif [[ -d /scratch3/NCEPDEV && -d /scratch4/NCEPDEV  ]]; then
     # We are on NOAA Ursa
     if ( ! eval module help > /dev/null 2>&1 ) ; then
         echo load the module command 1>&2
