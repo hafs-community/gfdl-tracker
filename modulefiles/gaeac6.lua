@@ -49,6 +49,7 @@ load(pathJoin("w3emc", w3emc_ver))
 sigio_ver=os.getenv("sigio_ver") or "2.3.2"
 load(pathJoin("sigio", sigio_ver))
 
+unload("cray-libsci")
 
 setenv("CC", "cc")
 setenv("CXX", "CC")
