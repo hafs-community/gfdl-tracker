@@ -12,14 +12,17 @@ project(
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 message(CMAKE_MODULE_PATH " ${CMAKE_MODULE_PATH}")
-if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel|GNU)$")
+if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel|GNU|IntelLLVM)$")
   message(WARNING "Compiler not officially supported: ${CMAKE_Fortran_COMPILER_ID}")
 endif()
 
-if(NOT CMAKE_C_COMPILER_ID MATCHES "^(Intel|GNU)$")
+if(NOT CMAKE_C_COMPILER_ID MATCHES "^(Intel|GNU|IntelLLVM)$")
   message(WARNING "Compiler not officially supported: ${CMAKE_C_COMPILER_ID}")
 endif()
 
+if(CMAKE_Fortran_COMPILER_ID MATCHES "^(IntelLLVM)?$")
+  set(CMAKE_Fortran_FLAGS "-Wl,--allow-multiple-definition")
+endif()
 
 find_package(NetCDF REQUIRED C Fortran)
 #find_package(HDF5 REQUIRED)

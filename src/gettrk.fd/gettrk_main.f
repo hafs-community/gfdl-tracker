@@ -4637,7 +4637,7 @@ c
       logical(4)  file_open4,file_open5
       character fnameg*7,fnamei*7,fnameo*7
       character(*) gfilename,ifilename
-      character(120) gopen_g_file,gopen_i_file
+      character(len=:), allocatable :: gopen_g_file,gopen_i_file
       integer  igoret,iioret,iooret,lugb,lugi,lout,iret,nlen1,nlen2
 
       iret=0
@@ -4656,9 +4656,15 @@ c
 
         print *,'in open_grib_files in multi else part....'
 
+        write(0,*) 'gfilename',gfilename
+        write(0,*) 'ifilename',ifilename
+
         nlen1        = len_trim(gfilename)
+        allocate(character(len=nlen1) :: gopen_g_file)
         gopen_g_file = trim(gfilename(1:nlen1))
+
         nlen2        = len_trim(ifilename)
+        allocate(character(len=nlen2) :: gopen_i_file)
         gopen_i_file = trim(ifilename(1:nlen2))
 
         print *,'  lugb= ',lugb,'  lugi= ',lugi
@@ -4667,8 +4673,8 @@ c
         print *,'gopen_i_file= ',gopen_i_file
 
         write (6,81) gopen_g_file,gopen_i_file
-   81   format (1x,'tpm gopen_g_file= ...',a<nlen1>
-     &         ,'...  gopen_i_file= ...',a<nlen2>,'...')
+   81   format (1x,'tpm gopen_g_file= ...',a
+     &         ,'...  gopen_i_file= ...',a,'...')
 
         print *,'gopen_g_file= ',gopen_g_file,'....'
         print *,'gopen_i_file= ',gopen_i_file,'....'
@@ -4739,9 +4745,13 @@ c
         endif
 
         iret = 113
+        if(allocated(gopen_i_file)) deallocate(gopen_i_file)
+        if(allocated(gopen_g_file)) deallocate(gopen_g_file)
         return
       endif
 
+      if(allocated(gopen_i_file)) deallocate(gopen_i_file)
+      if(allocated(gopen_g_file)) deallocate(gopen_g_file)
       return
       end
 c
