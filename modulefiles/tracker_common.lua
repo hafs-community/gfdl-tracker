@@ -1,6 +1,6 @@
 whatis("Description: TRACKER build environment common libraries")
 
-help([[Load UFS Model common libraries]])
+help([[Load TRACKER common libraries]])
 
 local ufs_modules = {
   {["jasper"]         = "2.0.32"},
