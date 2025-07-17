@@ -16,9 +16,9 @@ load(pathJoin("cmake", cmake_ver))
 
 load("tracker_common")
 
-setenv("CC", "mpiicx")
-setenv("CXX", "mpiicpx")
-setenv("FC", "mpiifort")
+setenv("CMAKE_C_COMPILER", "mpiicx")
+setenv("CMAKE_CXX_COMPILER", "mpiicpx")
+setenv("CMAKE_Fortran_COMPILER", "mpiifort")
 setenv("I_MPI_CC", "icx")
 setenv("I_MPI_CXX", "icpx")
 setenv("I_MPI_F90", "ifort")

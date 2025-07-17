@@ -16,9 +16,14 @@ load(pathJoin("cmake", cmake_ver))
 
 load("tracker_common")
 
+unload("cray-libsci")
+
 setenv("CC", "cc")
 setenv("CXX", "CC")
 setenv("FC", "ftn")
+setenv("CMAKE_C_COMPILER", "cc")
+setenv("CMAKE_CXX_COMPILER", "CC")
+setenv("CMAKE_Fortran_COMPILER", "ftn")
 
 setenv("CMAKE_Platform", "gaeac6.intel")
 
