@@ -17,8 +17,9 @@ void cwaitfor(int64_t *status, int64_t *minage, int64_t *minsize, int64_t *maxwa
   time_t now=time(NULL);
   int64_t maxwaitv=*maxwait;
   int64_t size,age;
-  fprintf(stderr,"%s: cwaitfor with minage=%d minsize=%d maxwait=%d=%d sleeptime=%d\n",
-          filename,*minage,*minsize,*maxwait,maxwaitv,*sleeptime);
+  fprintf(stderr,"%s: cwaitfor with minage=%lld minsize=%lld maxwait=%lld=%lld sleeptime=%lld\n",
+          filename, (long long)*minage, (long long)*minsize, (long long)*maxwait,
+          (long long)maxwaitv, (long long)*sleeptime);
   while(maxwaitv<0 || time(NULL)-now<maxwaitv) {
     if(!stat(filename,&s)) {
       size=s.st_size;
@@ -28,13 +29,13 @@ void cwaitfor(int64_t *status, int64_t *minage, int64_t *minsize, int64_t *maxwa
         *status=0;
         return;
       } else {
-        fprintf(stderr,"%s: Not ready yet.  Size=%d, age=%d, min size=%d, min age=%d\n",
-               filename,size,age,*minsize,*minage);
+        fprintf(stderr,"%s: Not ready yet.  Size=%lld, age=%lld, min size=%lld, min age=%lld\n",
+                filename,(long long)size,(long long)age,(long long)*minsize,(long long)*minage);
       }
     } else {
       fprintf(stderr,"%s: Not available yet.",filename);
     }
-    fprintf(stderr,"%s: sleep %d\n",filename,*sleeptime);
+    fprintf(stderr,"%s: sleep %lld\n",filename,(long long)*sleeptime);
     sleep(*sleeptime);
   }
 

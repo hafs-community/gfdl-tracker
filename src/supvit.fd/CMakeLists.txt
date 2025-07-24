@@ -14,9 +14,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RELEASE")                                                                  
 endif()
 
-if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
+if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)(LLVM)?$")
   set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -O2 -fp-model precise -i4 -r8")
   set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -O0 -g -traceback -check all -ftrapuv -fp-model precise -i4 -r8")
+  if(CMAKE_C_COMPILER_ID MATCHES "^(IntelLLVM)$")
+    set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG}  -check nouninit")
+  endif()
 endif()
 
 add_executable(${exe_name} ${fortran_srcs})
