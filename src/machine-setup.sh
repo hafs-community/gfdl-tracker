@@ -27,22 +27,24 @@ if [[ -d /lfs5 ]] ; then
     fi
     target=jet
     module purge
-elif [[ -d /scratch1/NCEPDEV ]] ; then
-    # We are on NOAA Hera
-    if ( ! eval module help > /dev/null 2>&1 ) ; then
-        echo load the module command 1>&2
-        source /apps/lmod/lmod/init/$__ms_shell
-    fi
-    target=hera
-    module purge
 elif [[ -d /scratch3/NCEPDEV && -d /scratch4/NCEPDEV  ]]; then
-    # We are on NOAA Ursa
-    if ( ! eval module help > /dev/null 2>&1 ) ; then
-        echo load the module command 1>&2
-        source $MODULESHOME/init/$__ms_shell
+    if [[ "$(hostname)" =~ "ufe" ]] ; then
+      # We are on NOAA Ursa
+      if ( ! eval module help > /dev/null 2>&1 ) ; then
+         echo load the module command 1>&2
+         source $MODULESHOME/init/$__ms_shell
+      fi
+      target=ursa
+      module purge
+    elif [[ "$(hostname)" =~ "hfe" ]] ; then
+      # We are on NOAA Hera
+      if ( ! eval module help > /dev/null 2>&1 ) ; then
+         echo load the module command 1>&2
+         source /apps/lmod/lmod/init/$__ms_shell
+      fi
+      target=hera
+      module purge
     fi
-    target=ursa
-    module purge
 elif [[ -d /work/noaa ]] ; then
     # We are on MSU Orion/Hercules
     if [[ "$(hostname)" =~ "hercules" ]] ; then
