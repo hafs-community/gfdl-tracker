@@ -5,6 +5,7 @@
 #=======================================================================
 
 set(fortran_srcs
+  gettrk_subroutines.f
   gettrk_modules.f 
   module_waitfor.f 
   cwaitfor.c
