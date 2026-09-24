@@ -67,6 +67,9 @@ elif [[ -d /work/noaa ]] ; then
 elif [[ -d /lfs/h1 && -d /lfs/h2 ]] ; then
     target=wcoss2
     . $MODULESHOME/init/sh
+elif [[ "$(hostname)" =~ "wcoss3" ]] ; then
+    target=nimbus
+    source $MODULESHOME/init/sh
 elif [[ -d /glade ]] ; then
     # We are on NCAR Yellowstone
     if ( ! eval module help > /dev/null 2>&1 ) ; then
