@@ -4,8 +4,11 @@ set -eux
 source ./machine-setup.sh > /dev/null 2>&1
 
 
+compiler=${compiler:-"intelllvm"}
+echo "Loading build.$target.$compiler"
+
 module use ../modulefiles
-module load $target
+module load build.$target.$compiler
 module list
 
 #Explicitly pass to linker that executable stack is not needed 
